@@ -30,8 +30,11 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import QRCode from "react-qr-code";
 
-// Configure PDF Worker (CDN for stability)
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configure PDF Worker (use local worker from node_modules)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).href;
 
 const DEFAULT_BASIC_FEATURES = [
     'Daily Login Bonus: 10 Credits/Day',

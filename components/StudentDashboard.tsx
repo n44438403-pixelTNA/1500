@@ -747,7 +747,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
       showAlert(`Received: ${finalReward} Free Credits!`, 'SUCCESS', 'Daily Goal Met');
   };
 
-  const handleUserUpdate = (updatedUser: User) => {
+  const handleUserUpdate = async (updatedUser: User) => {
       const storedUsers = JSON.parse(localStorage.getItem('nst_users') || '[]');
       const userIdx = storedUsers.findIndex((u:User) => u.id === updatedUser.id);
       if (userIdx !== -1) {
@@ -759,7 +759,11 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
 
       if (!isImpersonating) {
           saveUserLocal(updatedUser);
-          saveUserToLive(updatedUser);
+          // Ensure Firebase sync completes - this is critical for data persistence
+          await saveUserToLive(updatedUser).catch(err => {
+              console.error("Warning: Firebase sync failed during user update:", err);
+              // Even if Firebase fails, we continue (data is still in local storage)
+          });
       }
       onRedeemSuccess(updatedUser);
   };
@@ -1216,7 +1220,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                         <div className="mt-4 relative z-10">
                             <span className={`px-6 py-2 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-black/10 border-2 ${
                                 user.subscriptionLevel === 'ULTRA' && user.isPremium ? 'bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 border-amber-300' :
-                                user.subscriptionLevel === 'BASIC' && user.isPremium ? 'bg-cyan-500 text-white border-cyan-300' : 'bg-slate-600 text-slate-400 border-slate-500'
+                                user.subscriptionLevel === 'BASIC' && user.isPremium ? 'bg-cyan-500 text-white border-cyan-300' : 'bg-slate-700 text-white border-slate-600'
                             }`}>
                                 {user.isPremium
                                     ? (() => {
@@ -1465,9 +1469,15 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                             </button>
 
                             <button
-                                onClick={() => {
-                                    handleUserUpdate(user); // Force sync before logout
+                                onClick={async () => {
+                                    // 1. Ensure user data is saved to Firebase BEFORE clearing local storage
+                                    const updatedUserData = { ...user };
+                                    await saveUserToLive(updatedUserData); // Wait for Firebase sync to complete
+                                    
+                                    // 2. After Firebase save completes, clear local storage
                                     clearUserSpecificData(user.id); // Clear all user-specific cache
+                                    
+                                    // 3. Reload page to reset authentication
                                     window.location.reload();
                                 }}
                                 className="col-span-2 bg-red-50 p-3 rounded-xl border border-red-100 flex items-center justify-center gap-2 hover:bg-red-100 transition-colors text-red-600 font-bold text-sm"
@@ -1586,6 +1596,9 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                             {settings.specialDiscountEvent.discountPercent ? `${settings.specialDiscountEvent.discountPercent}% OFF` : 'SALE'}
                         </button>
                     )}
+                    <div className="bg-orange-50 border border-orange-200 text-orange-600 px-2 py-1 rounded-xl flex items-center gap-1 font-black text-[10px] whitespace-nowrap">
+                        <span className="text-sm">🔥</span> {user.streak || 0}
+                    </div>
                     <button
                         onClick={() => onTabChange('STORE')}
                         className="bg-blue-50 border border-blue-200 text-blue-600 px-2 py-1 rounded-xl flex items-center gap-1 font-black text-[10px] hover:bg-blue-100 transition-colors whitespace-nowrap"

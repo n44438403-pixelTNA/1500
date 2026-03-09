@@ -66,14 +66,11 @@ const TermsPopup: React.FC<{ onClose: () => void, text?: string }> = ({ onClose,
 const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('nst_dark_mode') === 'true');
-  const [showSplash, setShowSplash] = useState(() => {
-    return sessionStorage.getItem('app_session_splash') !== 'true';
-  }); // NEW
+  const [showSplash, setShowSplash] = useState(false); // Splash disabled - load app directly
 
   // ABANDONMENT DISCOUNT STATE
   const [isFlashSaleActive, setIsFlashSaleActive] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
-
 
   useEffect(() => {
       // 🚨 AGGRESSIVE CACHE CLEANUP FOR NON-ADMINS 🚨
@@ -1023,7 +1020,13 @@ const App: React.FC = () => {
       safeSetLocalStorage('nst_terms_accepted', 'true');
       setShowTerms(false);
       const hasSeenWelcome = localStorage.getItem('nst_has_seen_welcome');
-      if (!hasSeenWelcome) setState(prev => ({ ...prev, showWelcome: true }));
+      // Navigate to dashboard if user is logged in
+      if (state.user) {
+        const view = (state.user.role === 'ADMIN' || state.user.role === 'SUB_ADMIN') ? 'ADMIN_DASHBOARD' : 'STUDENT_DASHBOARD';
+        setState(prev => ({ ...prev, view: view as any, showWelcome: false }));
+      } else if (!hasSeenWelcome) {
+        setState(prev => ({ ...prev, showWelcome: true }));
+      }
   };
 
   const handleStartApp = () => {
@@ -2214,7 +2217,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 h-[env(safe-area-inset-bottom,32px)] bg-slate-900 z-[100]"></div>
 
       {/* WATERMARK LAYER */}
-      {state.settings.isWatermarkEnabled !== false && (
+      {false && (
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden select-none">
           {state.settings.appLogo && (
               <img
